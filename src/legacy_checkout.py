@@ -1,5 +1,8 @@
 """Processamento de pedidos (checkout)."""
 
+from collections import Counter
+from dataclasses import dataclass
+
 ORDERS_PROCESSED = []
 
 # --- Descontos por tipo de cliente ---
@@ -117,47 +120,79 @@ def calculate_points(customer_type, order_total):
     return int(order_total / divisor)
 
 
-def process_order(customer, items, coupon="", state="MG", express=False):
+def find_duplicate_products(items):
+    """Nomes de produtos repetidos, na ordem da primeira aparição (O(n))."""
+    name_counts = Counter(item["name"] for item in items)
+    return [name for name, count in name_counts.items() if count > 1]
+
+
+@dataclass(frozen=True)
+class OrderCalculation:
+    """Valores calculados de um pedido (sem arredondar)."""
+
+    subtotal: float
+    discount: float
+    shipping: float
+    tax: float
+    total: float
+    points: int
+
+
+def calculate_order(customer, items, coupon, state, express):
+    """Aplica todas as regras de negócio. Função pura: não imprime nem grava."""
+    customer_type = customer["type"]
+
     subtotal = calculate_subtotal(items)
-    desconto = calculate_discount(customer["type"], coupon, subtotal)
-    valor_com_desconto = subtotal - desconto
+    discount = calculate_discount(customer_type, coupon, subtotal)
+    discounted_value = subtotal - discount
 
-    peso = calculate_total_weight(items)
-    frete = calculate_shipping(subtotal, peso, state, express)
-    imposto = calculate_tax(valor_com_desconto, state)
+    shipping = calculate_shipping(
+        subtotal, calculate_total_weight(items), state, express
+    )
+    tax = calculate_tax(discounted_value, state)
+    total = discounted_value + shipping + tax
 
-    pontos = calculate_points(customer["type"], valor_com_desconto + frete + imposto)
+    return OrderCalculation(
+        subtotal=subtotal,
+        discount=discount,
+        shipping=shipping,
+        tax=tax,
+        total=total,
+        points=calculate_points(customer_type, total),
+    )
 
-    # procura produtos repetidos de forma bem pouco elegante
-    duplicados = []
 
-    for i in range(len(items)):
-        for j in range(len(items)):
-            if i != j:
-                if items[i]["name"] == items[j]["name"]:
-                    if items[i]["name"] not in duplicados:
-                        duplicados.append(items[i]["name"])
-
-    total_final = round(valor_com_desconto + frete + imposto, 2)
-
-    resultado = {
-        "customer": customer["name"],
-        "subtotal": round(subtotal, 2),
-        "discount": round(desconto, 2),
-        "shipping": round(frete, 2),
-        "tax": round(imposto, 2),
-        "total": total_final,
-        "points": pontos,
-        "duplicate_products": duplicados
+def build_order_result(customer_name, calculation, duplicate_products):
+    """Monta o dicionário de resultado com valores monetários arredondados."""
+    return {
+        "customer": customer_name,
+        "subtotal": round(calculation.subtotal, 2),
+        "discount": round(calculation.discount, 2),
+        "shipping": round(calculation.shipping, 2),
+        "tax": round(calculation.tax, 2),
+        "total": round(calculation.total, 2),
+        "points": calculation.points,
+        "duplicate_products": duplicate_products,
     }
 
-    ORDERS_PROCESSED.append(resultado)
 
-    print("Pedido processado para " + customer["name"])
-    print("Subtotal:", subtotal)
-    print("Desconto:", desconto)
-    print("Frete:", frete)
-    print("Imposto:", imposto)
-    print("TOTAL:", total_final)
+def print_order_summary(customer_name, calculation, rounded_total):
+    print("Pedido processado para " + customer_name)
+    print("Subtotal:", calculation.subtotal)
+    print("Desconto:", calculation.discount)
+    print("Frete:", calculation.shipping)
+    print("Imposto:", calculation.tax)
+    print("TOTAL:", rounded_total)
 
-    return resultado
+
+def process_order(customer, items, coupon="", state="MG", express=False):
+    """Processa um pedido: calcula, registra no histórico e imprime o resumo."""
+    calculation = calculate_order(customer, items, coupon, state, express)
+    result = build_order_result(
+        customer["name"], calculation, find_duplicate_products(items)
+    )
+
+    ORDERS_PROCESSED.append(result)
+    print_order_summary(customer["name"], calculation, result["total"])
+
+    return result
