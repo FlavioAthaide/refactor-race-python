@@ -3,19 +3,26 @@
 ORDERS_PROCESSED = []
 
 
+def calculate_subtotal(items):
+    """Soma preço x quantidade dos itens com quantidade positiva."""
+    subtotal = 0
+    for item in items:
+        if item["qty"] > 0:
+            subtotal += item["price"] * item["qty"]
+    return subtotal
+
+
+def calculate_total_weight(items):
+    """Soma peso x quantidade; item sem peso conta como 0."""
+    total_weight = 0
+    for item in items:
+        total_weight += item.get("weight", 0) * item["qty"]
+    return total_weight
+
+
 def process_order(customer, items, coupon="", state="MG", express=False):
 
-    # cálculo do subtotal
-    total1 = 0
-    for x in items:
-        if x["qty"] > 0:
-            total1 = total1 + (x["price"] * x["qty"])
-
-    # alguém colocou outro cálculo porque não confiava no primeiro
-    subtotal = 0
-    for x in items:
-        if x["qty"] > 0:
-            subtotal += x["price"] * x["qty"]
+    subtotal = calculate_subtotal(items)
 
     desconto = 0
 
@@ -49,10 +56,7 @@ def process_order(customer, items, coupon="", state="MG", express=False):
 
     valor_com_desconto = subtotal - desconto
 
-    # peso total
-    peso = 0
-    for produto in items:
-        peso += produto.get("weight", 0) * produto["qty"]
+    peso = calculate_total_weight(items)
 
     # frete
     frete = 0
