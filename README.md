@@ -1,9 +1,8 @@
 # REFactor Race Python
 
 ## EQUIPE
-- João Pedro Almeida
-- Mariana Costa Ribeiro
-- Lucas Fernandes Souza
+- Flavio Gabriel Athaide de Oliveira
+R.A: 325144298
 
 ## DESCRIÇÃO
 Refatoração de um sistema legado de processamento de pedidos (`process_order`),
