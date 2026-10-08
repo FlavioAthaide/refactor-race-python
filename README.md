@@ -3,6 +3,8 @@
 ## EQUIPE
 - Flavio Gabriel Athaide de Oliveira
 R.A: 325144298
+- Dante Almeida Cruz
+R.A: 325120274
 
 ## DESCRIÇÃO
 Refatoração de um sistema legado de processamento de pedidos (`process_order`),
